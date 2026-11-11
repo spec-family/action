@@ -6,8 +6,9 @@ One GitHub Action for the four spec-family tools. Each reads the Markdown a
 repository already keeps and checks what it says against the code, the git
 history and the changes an agent made:
 
-- [spec-guard](https://github.com/spec-family/spec-guard): the rules an ADR
-  states, run against the code; a claim held to its evidence.
+- [spec-guard](https://github.com/spec-family/spec-guard): the rules any
+  Markdown states - a specification, an ADR, a README, an agent's
+  instructions - run against the code; a claim held to its evidence.
 - [spec-graph](https://github.com/spec-family/spec-graph): the documents
   against each other and the repository - references, retired decisions,
   ticked boxes, the paths an agent's instructions name.
@@ -47,7 +48,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # The rules each ADR states, against the code.
+      # The rules the Markdown states, against the code.
       - uses: spec-family/action@v0.1.0
         with:
           tool: spec-guard
