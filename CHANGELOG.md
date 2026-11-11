@@ -3,7 +3,7 @@
 The action's own releases. A release of a tool needs none: the tool's
 version is an input, or the project's lockfile.
 
-## 0.1.0 - unreleased
+## 0.1.0 - 2026-11-11
 
 The first release.
 

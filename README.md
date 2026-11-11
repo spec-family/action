@@ -258,17 +258,19 @@ project's lockfile, so a release of a tool needs no release of the action.
 The action's own version changes when its inputs or what it runs change.
 
 Name a release of the action by its commit, with the version beside it, as
-the family pins every action it runs: a tag can be moved and a commit
-cannot, and Dependabot's `github-actions` updates keep such a pin current.
-The examples above name `v0.1.0` by its tag, since this README cannot hold
-the commit of the release it is part of. To find the commit:
+the family pins every action it runs: the commit is the code that runs,
+whatever becomes of a name, and Dependabot's `github-actions` updates keep
+such a pin current. Each release here is immutable, so its tag stays on its
+commit, and there is no moving major tag. The examples above name `v0.1.0`
+by its tag, since this README cannot hold the commit of the release it is
+part of. To find the commit:
 
 ```bash
-git ls-remote https://github.com/spec-family/action "refs/tags/v0.1.0*"
+git ls-remote https://github.com/spec-family/action "refs/tags/v0.1.0^{}"
 ```
 
-The line ending `^{}`, where there is one, names the commit; otherwise the
-one line does. Then:
+Release tags are annotated, and the line this prints names the commit the
+tag points to. Then:
 
 ```yaml
       - uses: spec-family/action@<that commit> # v0.1.0

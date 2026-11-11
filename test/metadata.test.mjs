@@ -1,7 +1,8 @@
-// action.yml, the workflows and the README, held to each other and to the
-// family's rules: every action named by commit with its version beside it,
-// every input and output in the README as action.yml has it, each job on an
-// image that does not move, and the README's examples at this release.
+// action.yml, the workflows, the README and the changelog, held to each
+// other and to the family's rules: every action named by commit with its
+// version beside it, every input and output in the README as action.yml has
+// it, each job on an image that does not move, and the README's examples and
+// the changelog at this release (CONTRIBUTING.md, Releasing).
 
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -14,6 +15,7 @@ const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 
 const ACTION = read('action.yml');
 const README = read('README.md');
+const CHANGELOG = read('CHANGELOG.md');
 const VERSION = JSON.parse(read('package.json')).version;
 const WORKFLOWS = readdirSync(join(ROOT, '.github', 'workflows'))
   .filter((name) => /\.ya?ml$/.test(name))
@@ -78,7 +80,11 @@ describe('the pins', () => {
     const uses = usesOf(README, 'README.md');
     const ours = uses.filter(({ written }) => written.startsWith('spec-family/action@'));
     assert.ok(ours.length >= 4);
-    assert.deepEqual(ours.filter(({ written }) => written !== `spec-family/action@v${VERSION}` && written !== `spec-family/action@<that commit> # v${VERSION}`).map(({ where, written }) => `${where}: ${written}`), []);
+    // The Pinning example names the release's commit once it is tagged, and
+    // `<that commit>` until then.
+    const atThisRelease = (written) => written === `spec-family/action@v${VERSION}` || new RegExp(`^spec-family/action@(<that commit>|[0-9a-f]{40}) # v${VERSION.replace(/\./g, '\\.')}$`).test(written);
+    assert.deepEqual(ours.filter(({ written }) => !atThisRelease(written)).map(({ where, written }) => `${where}: ${written}`), []);
+    assert.equal(ours.filter(({ written }) => written.includes(' # v')).length, 1);
     assert.deepEqual(uses.filter(({ written }) => !written.startsWith('spec-family/action@') && !pinned(written)).map(({ where, written }) => `${where}: ${written}`), []);
     assert.deepEqual([...README.matchAll(/refs\/tags\/v([\d.]+)/g)].map((match) => match[1]), [VERSION]);
   });
@@ -108,6 +114,13 @@ describe('the README', () => {
 
   it('never has npx run a tool by a name without its scope', () => {
     assert.deepEqual(README.match(/npx\b.*/g) ?? [], []);
+  });
+});
+
+describe('the changelog', () => {
+  it('opens with this release, dated or not yet', () => {
+    const first = /^## (.+)$/m.exec(CHANGELOG)?.[1];
+    assert.match(first ?? '', new RegExp(`^${VERSION.replace(/\./g, '\\.')} - (\\d{4}-\\d{2}-\\d{2}|unreleased)$`));
   });
 });
 
