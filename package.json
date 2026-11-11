@@ -1,0 +1,11 @@
+{
+  "name": "spec-family-action",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The spec-family GitHub Action: run spec-guard, spec-graph, spec-brief or spec-harness in a workflow.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "spec-family-action-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A project that installed the spec-family tools itself, for the action's self-test.",
+  "license": "MIT",
+  "devDependencies": {
+    "@spec-family/spec-brief": "0.13.1",
+    "@spec-family/spec-guard": "0.33.1",
+    "@spec-family/spec-harness": "0.24.1"
+  }
+}

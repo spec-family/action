@@ -1,0 +1,160 @@
+name: self-test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # The script against a stand-in for a tool, on each Node line from the
+  # tools' minimum to the Active LTS.
+  unit:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        node: ['22', '24', '26']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+
+  # The action as a project that installed nothing meets it: it fetches each
+  # tool from npm. Each step but the first is expected to fail, so each
+  # carries on, and the last step holds every result to what it should be.
+  fetched:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: spec-guard, clean, with SARIF (and node-version)
+        id: clean
+        uses: ./
+        with:
+          tool: spec-guard
+          version: 0.33.1
+          working-directory: test/fixtures/clean
+          sarif: out/clean.sarif
+          node-version: '26'
+      - name: spec-guard, a finding, with SARIF
+        id: finding
+        continue-on-error: true
+        uses: ./
+        with:
+          tool: spec-guard
+          version: 0.33.1
+          working-directory: test/fixtures/finding
+          sarif: out/finding.sarif
+      - name: spec-graph check, a finding
+        id: graph
+        continue-on-error: true
+        uses: ./
+        with:
+          tool: spec-graph
+          command: check
+          version: 0.24.1
+          working-directory: test/fixtures/finding
+      - name: spec-brief lint where there are no briefs, which the tool cannot trust
+        id: untrusted
+        continue-on-error: true
+        uses: ./
+        with:
+          tool: spec-brief
+          command: lint
+          version: 0.13.1
+          working-directory: test/fixtures/clean
+          sarif: out/untrusted.sarif
+      - name: A version that is not one release, which the action refuses
+        id: refused
+        continue-on-error: true
+        uses: ./
+        with:
+          tool: spec-guard
+          version: latest
+      - name: Check the results
+        if: ${{ !cancelled() }}
+        env:
+          STEPS: ${{ toJSON(steps) }}
+        run: node test/check-run.mjs fetched
+
+  # The action in a project that installed the tools itself: its install
+  # runs, whatever version says. spec-brief and spec-harness root a run at
+  # the top of the git work tree, so the fixture becomes a repository of its
+  # own.
+  project:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+      - name: Make the fixture a repository of its own, and install its tools
+        run: |
+          cp -R test/fixtures/project "$RUNNER_TEMP/project"
+          cd "$RUNNER_TEMP/project"
+          git init -q -b main
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: spec-harness premises, with SARIF
+        id: premises
+        continue-on-error: true
+        uses: ./
+        with:
+          tool: spec-harness
+          command: premises
+          working-directory: ${{ runner.temp }}/project
+          sarif: ${{ runner.temp }}/premises.sarif
+      - name: spec-brief lint
+        id: lint
+        continue-on-error: true
+        uses: ./
+        with:
+          tool: spec-brief
+          command: lint
+          working-directory: ${{ runner.temp }}/project
+      - name: spec-guard, with a version the project did not install
+        id: pinned
+        continue-on-error: true
+        uses: ./
+        with:
+          tool: spec-guard
+          version: 0.33.0
+          working-directory: ${{ runner.temp }}/project
+      - name: Check the results
+        if: ${{ !cancelled() }}
+        env:
+          STEPS: ${{ toJSON(steps) }}
+        run: node test/check-run.mjs project
+
+  # On a Node below what the tool supports, the action says so and exits 2,
+  # rather than start the tool and read its crash as findings.
+  old-node:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '20'
+      - name: spec-guard on Node 20
+        id: old
+        continue-on-error: true
+        uses: ./
+        with:
+          tool: spec-guard
+          version: 0.33.1
+          working-directory: test/fixtures/clean
+      - name: Check the results
+        if: ${{ !cancelled() }}
+        env:
+          STEPS: ${{ toJSON(steps) }}
+        run: node test/check-run.mjs old-node

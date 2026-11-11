@@ -1,0 +1,99 @@
+name: Spec Family Tools
+description: Hold your code, and the agents that write it, to what your Markdown says.
+author: spec-family
+branding:
+  icon: file-text
+  color: blue
+
+inputs:
+  tool:
+    description: >-
+      The tool to run: spec-guard, spec-graph, spec-brief or spec-harness.
+    required: true
+  command:
+    description: >-
+      The tool's command, such as claims, check, lint or premises. Empty runs
+      the tool's default command.
+    required: false
+    default: ''
+  args:
+    description: >-
+      The command's arguments and options, one to a line. Nothing is split on
+      spaces and no shell reads them, so a glob reaches the tool as written.
+    required: false
+    default: ''
+  version:
+    description: >-
+      The exact release to fetch from npm, such as 0.33.1, when the project has
+      not installed the tool. The project's own install runs whenever there is
+      one.
+    required: false
+    default: ''
+  working-directory:
+    description: >-
+      Where the tool runs, from the workspace. Annotations and SARIF name files
+      from here, and GitHub places them from the repository's root.
+    required: false
+    default: '.'
+  annotations:
+    description: >-
+      true adds --format github, so that each finding annotates the pull
+      request; false runs the command as args give it.
+    required: false
+    default: 'true'
+  sarif:
+    description: >-
+      A path, from the workspace, to write the findings to as SARIF 2.1.0, for
+      github/codeql-action/upload-sarif. The command runs a second time, with
+      --format sarif. Empty writes none.
+    required: false
+    default: ''
+  node-version:
+    description: >-
+      A Node version for actions/setup-node to set up first, such as 24. Empty
+      runs the Node the job already has, which must be one the tool supports.
+    required: false
+    default: ''
+
+outputs:
+  exit-code:
+    description: >-
+      The tool's exit code, which is also the step's: 0 clean, 1 found
+      something, 2 the run cannot be trusted.
+    value: ${{ steps.run.outputs.exit-code }}
+  sarif:
+    description: >-
+      The absolute path of the SARIF file, when sarif asked for one and the run
+      answered (exit 0 or 1); empty otherwise.
+    value: ${{ steps.run.outputs.sarif }}
+  version:
+    description: The release of the tool that ran.
+    value: ${{ steps.run.outputs.version }}
+  source:
+    description: >-
+      Whose copy ran: project for the project's install, action for one the
+      action fetched.
+    value: ${{ steps.run.outputs.source }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node
+      if: inputs.node-version != ''
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: ${{ inputs.node-version }}
+    # The inputs reach the script as variables, never as text spliced into
+    # it, so no input is ever read by a shell.
+    - name: Run ${{ inputs.tool }}
+      id: run
+      shell: bash
+      env:
+        SPEC_FAMILY_ACTION_TOOL: ${{ inputs.tool }}
+        SPEC_FAMILY_ACTION_COMMAND: ${{ inputs.command }}
+        SPEC_FAMILY_ACTION_ARGS: ${{ inputs.args }}
+        SPEC_FAMILY_ACTION_VERSION: ${{ inputs.version }}
+        SPEC_FAMILY_ACTION_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        SPEC_FAMILY_ACTION_ANNOTATIONS: ${{ inputs.annotations }}
+        SPEC_FAMILY_ACTION_SARIF: ${{ inputs.sarif }}
+      run: node "$GITHUB_ACTION_PATH/src/main.mjs"
