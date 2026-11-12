@@ -52,19 +52,24 @@ jobs:
       - uses: spec-family/action@v0.1.0
         with:
           tool: spec-guard
-          version: 0.33.1
+          version: 0.34.0
           node-version: '26'
-      # Each claim a specification labels, against its evidence.
+      # Each claim a specification labels, against its evidence: once
+      # .spec-guard.json configures claims. Without it this step exits 2.
       - if: ${{ !cancelled() }}
         uses: spec-family/action@v0.1.0
         with:
           tool: spec-guard
           command: claims
-          version: 0.33.1
+          version: 0.34.0
 ```
 
 The first step sets up Node 26 for the job, so the second needs no
-`node-version`. `if: ${{ !cancelled() }}` runs each check whatever failed
+`node-version`. spec-guard reads `docs/**/*.md` unless told otherwise:
+where the Markdown lives elsewhere, name it in `args`. A run with no
+Markdown to read, or a `claims` step with no `claims` configured, exits `2`
+rather than pass, so add the second step once `.spec-guard.json` holds
+claims ([spec-guard's claims](https://github.com/spec-family/spec-guard/blob/main/docs/reference/claims.md)). `if: ${{ !cancelled() }}` runs each check whatever failed
 before it, and the job still fails if any did.
 
 ### spec-graph, with code scanning
@@ -88,7 +93,7 @@ jobs:
         with:
           tool: spec-graph
           command: check
-          version: 0.24.1
+          version: 0.25.0
           node-version: '26'
           sarif: spec-graph.sarif
       - if: ${{ !cancelled() && steps.graph.outputs.sarif != '' }}
@@ -167,17 +172,16 @@ jobs:
           tool: spec-harness
           command: premises
       # spec-harness names a round's brief from the pull request's branch:
-      # brief/{id}, brief-{id}, or either after one more name and a slash. On
-      # any other branch no round is under way, and the audit has no brief
-      # to read.
-      - if: >-
-          ${{ !cancelled() && github.event_name == 'pull_request' && (
-          startsWith(github.head_ref, 'brief/') || startsWith(github.head_ref, 'brief-') ||
-          contains(github.head_ref, '/brief/') || contains(github.head_ref, '/brief-')) }}
+      # brief/{id}, brief-{id}, or either after one more name and a slash.
+      # With --if-round (spec-harness 0.25.0 or later), a branch that names
+      # no brief, or one that archived its brief, has no round to audit: the
+      # audit says so and passes.
+      - if: ${{ !cancelled() }}
         uses: spec-family/action@v0.1.0
         with:
           tool: spec-harness
           command: audit
+          args: --if-round
 ```
 
 A command that reports no findings, such as `spec-harness doctor` or
@@ -190,7 +194,7 @@ A command that reports no findings, such as `spec-harness doctor` or
 | `tool` | (required) | `spec-guard`, `spec-graph`, `spec-brief` or `spec-harness`. |
 | `command` | none | The tool's command, such as `claims`, `check`, `lint` or `premises`. Without one the tool runs its default command. |
 | `args` | none | The command's arguments and options, one to a line. Nothing splits them on spaces and no shell reads them, so a glob reaches the tool as written. |
-| `version` | none | The exact release to fetch, such as `0.33.1`, when the project has not installed the tool. Never a range or a tag. The project's install runs whenever there is one, and a `version` that names another release is said in a warning. |
+| `version` | none | The exact release to fetch, such as `0.34.0`, when the project has not installed the tool. Never a range or a tag. The project's install runs whenever there is one, and a `version` that names another release is said in a warning. |
 | `working-directory` | `.` | Where the tool runs, from the workspace. |
 | `annotations` | `true` | `true` adds `--format github`, so each finding annotates the pull request; `false` runs the command as `args` give it. |
 | `sarif` | none | A path, from the workspace, to write the findings to as SARIF 2.1.0. The command runs a second time, with `--format sarif`. |
@@ -202,7 +206,7 @@ A command that reports no findings, such as `spec-harness doctor` or
       - uses: spec-family/action@v0.1.0
         with:
           tool: spec-guard
-          version: 0.33.1
+          version: 0.34.0
           args: |
             docs/adr/*.md
             --strict

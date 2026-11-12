@@ -24,7 +24,7 @@ inputs:
     default: ''
   version:
     description: >-
-      The exact release to fetch from npm, such as 0.33.1, when the project has
+      The exact release to fetch from npm, such as 0.34.0, when the project has
       not installed the tool. The project's own install runs whenever there is
       one.
     required: false
